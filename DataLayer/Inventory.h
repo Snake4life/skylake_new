@@ -34,6 +34,25 @@ struct ISlot {
 		item = nullptr;
 		flags = 0;
 	}
+
+	inline bool HasItem(UINT32 itemId) const noexcept{
+		return IsEmpty() ? false : item->iTemplate->id == itemId;
+	}
+
+	inline bool HasItem(UID itemUID) const noexcept {
+		return IsEmpty() ? false : item->id == itemUID;
+	}
+
+	inline UINT32 GetStackCount() const noexcept {
+		return IsEmpty() ? 0 : item->stackCount;
+	}
+
+	inline Item* Release() noexcept {
+		Item * toReturn = item;
+		this->item = nullptr;
+		flags = 0;
+		return toReturn;
+	}
 };
 
 struct Inventory {
@@ -64,12 +83,32 @@ struct Inventory {
 	INT32 InsertNonDb(Item * item);
 	INT32 StackNonDb(UINT32 itemId, INT32 stackCount);
 	INT32 DestroyNonDbStack(UINT32 itemId, INT32 stackCount);
+	UINT32 ExtractNonDbStack(UINT32 itemId, INT32 stackCount);
 	INT32 Insert(Item* item);
-	INT32 InsertProfile(Item* item, UINT16 slotId);
-	Item* ExtractItem(UINT32 itemId);
-	Item* ExtractItemNoRemove(UINT32 itemId);
-	Item* ExtractItemNoRemove(UINT64 itemDbId);
-	Item* ExtractSlot(UINT16 slotId);
+	inline INT32 InsertProfile(Item* item, UINT16 slotId) noexcept
+	{
+		if (slotId >= PLAYER_INVENTORY_PROFILE_SLOTS_COUNT) {
+			return 1;
+		}
+
+		if (!profileSlots[slotId].IsEmpty()) {
+			return 2;
+		}
+
+		profileSlots[slotId].item = item;
+
+		return 0;
+	}
+	Item* ExtractInvItem(UID itemUID);
+	inline Item* ExtractInvSlot(UINT16 slotId) noexcept{
+		if (slotId >= slotsCount) {
+			return nullptr;
+		}
+
+		return inventorySlots[slotId].Release();
+	}
+	Item* GetItem(UINT32 itemId);
+	Item* GetItem(UID itemUID);
 	INT32 EquipeItem(UINT16 slotId, sql::Connection * sql);
 	INT32 UnequipeItem(UINT16 slotId, sql::Connection * sql);
 	INT32 EquipeCrystal(UINT16 profileSlotId, UINT16 slotId, sql::Connection * sql);

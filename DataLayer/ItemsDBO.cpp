@@ -117,7 +117,7 @@ INT32 DeserializeItem(Item * i, MemoryStream * data) {
 	return 0;
 }
 
-Item * CreateItem(UINT64 itemId, UID playerId, sql::Connection * sql) {
+Item * CreateItem(UINT32 itemId, UID playerId, sql::Connection * sql) {
 	UINT32 iTemplateIndex = GetItemTemplateIndex(itemId);
 	if (iTemplateIndex == UINT32_MAX) {
 		//@TODO log
@@ -430,7 +430,7 @@ Item * CreateNonDbItem(Item * existing) {
 
 	return item.release();
 }
-Item * CreateNonDbItem(UINT64 itemId, UINT32 stackCount) {
+Item * CreateNonDbItem(UINT32 itemId, UINT32 stackCount) {
 	UINT32 iTemplateIndex = GetItemTemplateIndex(itemId);
 	if (iTemplateIndex == UINT32_MAX) {
 		//@TODO log
