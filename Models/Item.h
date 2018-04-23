@@ -18,7 +18,7 @@ struct Item {
 
 	// SERIALIZER _START
 	UINT32			stackCount;
-	INT32			crystals[4];
+	UINT32			crystals[4];
 	UINT32			binderDBId;
 	UINT32			crafterDBId;
 	INT32			itemLevel;
@@ -54,6 +54,21 @@ struct Item {
 	inline Passivity** ClearPassivities() {
 		ZeroMemory(passivities, sizeof(Passivity*) * ITEM_ACTIVE_PASSIVITIES_MAX_COUNT);
 		return passivities;
+	}
+	inline const UINT32 const * GetCrystalEmptySlot(const UINT32 maxSlots) const noexcept {
+		if (maxSlots > 4)  {
+			return nullptr;
+		}
+
+		for (UINT16 i = 0; i < maxSlots; i++)
+		{
+			if (!crystals[i]) 
+			{
+				return crystals + i;
+			}
+		}
+
+		return nullptr;
 	}
 };
 

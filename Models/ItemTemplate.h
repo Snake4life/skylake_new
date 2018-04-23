@@ -60,15 +60,19 @@ struct ItemTemplateInventoryData {
 	INT16		unidentifyItemGrade;
 
 	const BOOL AcceptsClass(const EPlayerClass classE) const noexcept {
-		return requiredClasses & classE;
+		return requiredClasses ? requiredClasses & (1 << classE) : TRUE;
 	}
 
 	const BOOL AcceptsRace(const EPlayerRace race) const noexcept {
-		return requiredRaces & race;
+		return requiredRaces ? requiredRaces & (1 << race) : TRUE;
 	}
 
 	const BOOL AcceptsGender(const EPlayerGender gender) const noexcept {
-		return requiredGenders & gender;
+		return requiredGenders ? requiredGenders & (1 << gender) : TRUE;
+	}
+
+	const BOOL AcceptsLevel(const UINT32 level) const noexcept {
+		return requiredLevel ? requiredGenders <= level : TRUE;
 	}
 };
 
@@ -109,5 +113,7 @@ struct ItemTemplateLinks {
 
 	//@TODO resolve links methods here
 };
+
+
 
 #endif

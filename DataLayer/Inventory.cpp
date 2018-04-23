@@ -1,6 +1,7 @@
 #include "Inventory.h"
 
 #include "../Models/DataStore.h"
+#include "../Models/Player.h"
 
 INT32 Inventory::MoveItem(UINT16 slotIdFrom, UINT16 slotIdTo) noexcept
 {
@@ -260,7 +261,7 @@ UINT32 Inventory::ExtractNonDbStack(UINT32 itemId, INT32 stackCount)
 		if (inventorySlots[i].HasItem(itemId))
 		{
 			Item * item = inventorySlots[i].item;
-			
+
 			stackCount = item->stackCount - stackCount;
 			if (stackCount < 0) {
 				total += item->stackCount;
@@ -344,19 +345,223 @@ Item * Inventory::GetItem(UID itemUID)
 
 INT32 Inventory::EquipeItem(UINT16 slotId, sql::Connection * sql)
 {
-	//@TODO
+	if (slotId >= (slotsCount + 40)) {
+		return 1;
+	}
+
+	ISlot * slot = &inventorySlots[slotId - 40];
+	if (slot->IsEmpty()) {
+		return 2;
+	}
+
+	Item * item = slot->item;
+	ItemTemplate * iTemplate = item->iTemplate;
+	const ItemTemplateInventoryData * iTemplate2 = GetItemTemplateInventoryData(iTemplate->index);
+
+	register UINT32 playerLevel = a_load_acquire(player->level);
+	if (iTemplate2->AcceptsLevel(playerLevel))
+	{
+		//@TODO send chat message "Your level is to low to equipe that item!"
+		return 0;
+	}
+
+	if (iTemplate2->AcceptsClass(player->pClass))
+	{
+		//@TODO send sys-msg "@28"
+		return 0;
+	}
+
+	if (iTemplate2->AcceptsGender(player->pGender))
+	{
+		//@TODO send sys-msg [unk]
+		return 0;
+	}
+
+	if (iTemplate2->AcceptsRace(player->pRace))
+	{
+		//@TODO send sys-msg [unk]
+		return 0;
+	}
+
+	if (ArbiterConfig::player.soulbindingEnabled)
+	{
+		if (item->binderDBId && item->binderDBId != player->dbId) {
+			//@TODO send sys-msg "@347"
+			return 0;
+		}
+
+		//ignore soulbinding logic here??
+	}
+
+	EItemCategory iCategory = iTemplate->category;
+	EItemType iCombatType = iTemplate->combatItemType;
+
+	//@TODO optimize using array of handlers
+	switch (iCombatType)
+	{
+	case EItemType_EQUIP_ACCESSORY:
+
+		if (iCategory == EItemCategory_necklace)
+		{
+			InterchangeItems(&profileSlots[EProfileSlotType_NECKLACE], slot);
+		}
+		else if (iCategory == EItemCategory_earring)
+		{
+			if (profileSlots[EProfileSlotType_EARRING_L].IsEmpty())
+			{
+				InterchangeItems(&profileSlots[EProfileSlotType_EARRING_L], slot);
+			}
+			else if (profileSlots[EProfileSlotType_EARRING_R].IsEmpty())
+			{
+				InterchangeItems(&profileSlots[EProfileSlotType_EARRING_R], slot);
+			}
+			else
+			{
+				if (profileSlots[EProfileSlotType_EARRING_L].item->iTemplate->id == iTemplate->id)
+				{
+					InterchangeItems(&profileSlots[EProfileSlotType_EARRING_L], slot);
+				}
+				else
+				{
+					InterchangeItems(&profileSlots[EProfileSlotType_EARRING_R], slot);
+				}
+			}
+		}
+		else if (iCategory == EItemCategory_ring)
+		{
+			if (profileSlots[EProfileSlotType_RING_L].IsEmpty())
+			{
+				InterchangeItems(&profileSlots[EProfileSlotType_RING_L], slot);
+			}
+			else if (profileSlots[EProfileSlotType_RING_R].IsEmpty())
+			{
+				InterchangeItems(&profileSlots[EProfileSlotType_RING_R], slot);
+			}
+			else
+			{
+				if (profileSlots[EProfileSlotType_RING_L].item->iTemplate->id == iTemplate->id) 
+				{
+					InterchangeItems(&profileSlots[EProfileSlotType_RING_L], slot);
+				}
+				else
+				{
+					InterchangeItems(&profileSlots[EProfileSlotType_RING_R], slot);
+				}
+			}
+		}
+		else if (iCategory == EItemCategory_brooch)
+		{
+			InterchangeItems(&profileSlots[EProfileSlotType_BROOCH], slot);
+		}
+		else if (iCategory == EItemCategory_belt)
+		{
+			InterchangeItems(&profileSlots[EProfileSlotType_BELT], slot);
+		}
+		else if (iCategory == EItemCategory_accessoryHair)
+		{
+			InterchangeItems(&profileSlots[EProfileSlotType_HEAD_ADRONMENT], slot);
+		}
+
+		break;
+	case EItemType_EQUIP_WEAPON:
+		InterchangeItems(&profileSlots[EProfileSlotType_WEAPON], slot);
+		break;
+	case EItemType_EQUIP_STYLE_ACCESSORY:
+		if (iCategory == EItemCategory_style_face) 
+		{
+			InterchangeItems(&profileSlots[EProfileSlotType_SKIN_FACE], slot);
+		}
+		else if (iCategory == EItemCategory_style_hair) 
+		{
+			InterchangeItems(&profileSlots[EProfileSlotType_SKIN_HEAD], slot);
+		}
+		break;
+	case EItemType_EQUIP_ARMOR_BODY:
+		InterchangeItems(&profileSlots[EProfileSlotType_ARMOR], slot);
+		break;
+	case EItemType_EQUIP_ARMOR_ARM:
+		InterchangeItems(&profileSlots[EProfileSlotType_GLOVES], slot);
+		break;
+	case EItemType_EQUIP_ARMOR_LEG:
+		break;
+	case EItemType_EQUIP_INHERITANCE:
+		InterchangeItems(&profileSlots[EProfileSlotType_BOOTS], slot);
+		break;
+	case EItemType_EQUIP_STYLE_WEAPON:
+		InterchangeItems(&profileSlots[EProfileSlotType_SKIN_WEAPON], slot);
+		break;
+	case EItemType_EQUIP_STYLE_BODY:
+		InterchangeItems(&profileSlots[EProfileSlotType_SKIN_BODY], slot);
+		break;
+	case EItemType_EQUIP_UNDERWEAR:
+		InterchangeItems(&profileSlots[EProfileSlotType_INNERWARE], slot);
+		break;
+	case EItemType_EQUIP_STYLE_BACK:
+		InterchangeItems(&profileSlots[EProfileSlotType_SKIN_BACK], slot);
+		break;
+	case EItemType_EQUIP_STYLE_EFFECT:
+		//??
+		break;
+	case EItemType_CUSTOM:
+
+		//crystals @TODO
+
+		break;
+	}
+
+	//@TODO:
+	//recalcultate stats if needed [check by item type]
+	//send external change async if needed[exclude earring, rings, brooch etc]
+
 	return 0;
 }
 
 INT32 Inventory::UnequipeItem(UINT16 slotId, sql::Connection * sql)
 {
-	//@TODO
+	if (slotId >= PLAYER_INVENTORY_PROFILE_SLOTS_COUNT) {
+		//@TODO log
+		return 1;
+	}
+
+	if (profileSlots[slotId].IsEmpty()) {
+		//@TODO log
+		return 2;
+	}
+
+	INT32 emptySlot = GetEmptySlotUnsafe();
+	if (emptySlot == -1) {
+		//@TODO send sys-msg "@39"
+		return 0;
+	}
+
+	InterchangeItems(&inventorySlots[emptySlot], &profileSlots[slotId]);
+	
+	//@TODO:
+	//recalcultate stats if needed [check by item type]
+	//send external change async if needed[exclude earring, rings, brooch etc]
+
 	return 0;
 }
 
 INT32 Inventory::EquipeCrystal(UINT16 profileSlotId, UINT16 slotId, sql::Connection * sql)
 {
-	//@TODO
+	if (profileSlots[profileSlotId].IsEmpty()) {
+		return 1;
+	}
+
+	slotId -= 40;
+
+	const ItemTemplateInventoryData * iTempalte = GetItemTemplateInventoryData(profileSlots[profileSlotId].item->iTemplate->index);
+	UINT16 countOfSlots = iTempalte->countOfSlot;
+
+	for (UINT16 i = 0; i < countOfSlots; i++)
+	{
+		if (profileSlots[profileSlotId].item->crystals[i] <= 0) 
+		{
+
+		}
+	}
+
 	return 0;
 }
 

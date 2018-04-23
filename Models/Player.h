@@ -42,7 +42,7 @@ struct Player {
 	UINT64			exp;
 	UINT64			restedExp;
 
-	UINT64			level;
+	a_uint32		level;
 
 	UINT64			banTime;
 	UINT64			lastOnline;
@@ -72,4 +72,5 @@ struct Player {
 		flags &= !flag;
 	}
 };
+
 #endif
